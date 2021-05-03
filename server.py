@@ -1,4 +1,5 @@
 from flask import Flask,jsonify,request,redirect
+from flask_cors import CORS
 import sqlite3
 import hashlib
 from database import *
@@ -29,6 +30,7 @@ def login():
 
 @app.route('/user/register' , methods=['POST'])
 def register():
+    print(request.form)
     con = sqlite3.connect("DB.sqlite3")
     cur = con.cursor()
     account = request.form['account']
@@ -171,4 +173,5 @@ def show_work_places(uid):
 
 if __name__=='__main__':
     app.debug=True
+    cors = CORS(app, resources={r"/*": {"origins": "*"}})
     app.run(host="0.0.0.0",port=5000)
