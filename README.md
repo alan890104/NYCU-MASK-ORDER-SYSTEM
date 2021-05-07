@@ -58,6 +58,7 @@ Retrun(json):
 } 
 ```
 
+
 ## 列出全部商店資訊(後端)
 ```python=
 #route 140.113.67.121:5000/shop/query method='POST'
@@ -83,10 +84,10 @@ Retrun(json):
 } 
 ```
 
-## 回傳指定店家資訊(後端)
+## 用uid得到使用者註冊的商店資訊(後端)
 ```python=
-#route 140.113.67.121:5000/shop/query/<商店名稱>  method='POST'
-query specify shop request
+#route 140.113.67.121:5000/shop/query/uid/<使用者uid> method='POST'
+query specify shop request(by uid)
 {
     不用任何咚咚 店家名字放在route裡面
 }
@@ -102,6 +103,57 @@ Retrun(json):
             "city": string
             "price": unsigned int
             "amount": unsigned int
+            "uid": string
+         }
+} 
+```
+
+## 用商店名稱得到指定店家資訊(後端)
+```python=
+#route 140.113.67.121:5000/shop/query/name/<name>  method='POST'
+query specify shop request(by name)
+{
+    不用任何咚咚 店家名字放在route裡面
+}
+
+Retrun(json):
+{
+    info: "Success"/"Fail"(商店不存在)
+    status: 1/0
+    data:{
+            成功才會有值
+            "sid":  string
+            "name": string
+            "city": string
+            "price": unsigned int
+            "amount": unsigned int
+            "uid": string
+         }
+} 
+```
+
+
+
+## 用sid得到指定店家資訊(後端)
+```python=
+#route 140.113.67.121:5000/shop/query/sid/<sid>  method='POST'
+query specify shop request(by sid)
+{
+    不用任何咚咚 店家名字放在route裡面
+}
+
+Retrun(json):
+{
+    info: "Success"/"Fail"(商店不存在)
+    status: 1/0
+    data:{
+            成功才會有值
+            "sid":  string
+            "name": string
+            "city": string
+            "price": unsigned int
+            "amount": unsigned int
+            "uid": string
          }
 } 
 ```
@@ -138,7 +190,7 @@ Retrun(json):
 
 ## 修改口罩價格數量(後端)
 ```python=
-#route 140.113.67.121:5000/mask/edit/<店家名稱> method='POST'
+#route 140.113.67.121:5000/mask/edit/<sid> method='POST'
 edit mask request
 {
     傳過來指定店家最新的口罩數量與價格，無論是哪一個被改了
