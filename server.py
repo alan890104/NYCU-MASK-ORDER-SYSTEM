@@ -64,8 +64,24 @@ def query_shop():
     con.close()
     return jsonify({"info":"Success",'status':1,"data":data})
 
-@app.route('/shop/query/<name>' , methods=['POST'])
-def query_specify_shop(name):
+@app.route('/shop/query/uid/<uid>' , methods=['POST'])
+def query_specify_shop_by_uid(uid):
+    con = sqlite3.connect("DB.sqlite3")
+    cur = con.cursor()
+    cur.execute("SELECT * FROM shop WHERE uid = ?",[uid])
+    data = cur.fetchone()
+    return_obj = {"info":'Success',"status":0}
+    if not data:
+        return_obj["info"] = "Fail"
+    else:
+        return_obj["status"] = 1
+        return_obj["data"] = {"sid":data[0],"name":data[1],"city":data[2],"price":data[3],"amount":data[4],"uid":data[5]}
+    cur.close()
+    con.close()
+    return jsonify(return_obj)
+
+@app.route('/shop/query/name/<name>' , methods=['POST'])
+def query_specify_shop_by_name(name):
     con = sqlite3.connect("DB.sqlite3")
     cur = con.cursor()
     cur.execute("SELECT * FROM shop WHERE name = ?",[name])
@@ -75,7 +91,23 @@ def query_specify_shop(name):
         return_obj["info"] = "Fail"
     else:
         return_obj["status"] = 1
-        return_obj["data"] = {"sid":data[0],"name":data[1],"city":data[2],"price":data[3],"amount":data[4]}
+        return_obj["data"] = {"sid":data[0],"name":data[1],"city":data[2],"price":data[3],"amount":data[4],"uid":data[5]}
+    cur.close()
+    con.close()
+    return jsonify(return_obj)
+
+@app.route('/shop/query/sid/<sid>' , methods=['POST'])
+def query_specify_shop_by_sid(sid):
+    con = sqlite3.connect("DB.sqlite3")
+    cur = con.cursor()
+    cur.execute("SELECT * FROM shop WHERE sid = ?",[sid])
+    data = cur.fetchone()
+    return_obj = {"info":'Success',"status":0,"data":{}}
+    if not data:
+        return_obj["info"] = "Fail"
+    else:
+        return_obj["status"] = 1
+        return_obj["data"] = {"sid":data[0],"name":data[1],"city":data[2],"price":data[3],"amount":data[4],"uid":data[5]}
     cur.close()
     con.close()
     return jsonify(return_obj)
@@ -117,13 +149,13 @@ def query_shop_by_conditioin(uid):
     con.close()
     return jsonify({"info":"Success","status":1,"data":data})
 
-@app.route('/mask/edit/<name>' , methods=['POST'])
-def edit_mask(name):
+@app.route('/mask/edit/<sid>' , methods=['POST'])
+def edit_mask(sid):
     con = sqlite3.connect("DB.sqlite3")
     cur = con.cursor()
     price = request.form['price']
     amount = request.form['amount']
-    info,status = update_mask_price_amount(con, cur, name, price, amount)
+    info,status = update_mask_price_amount(con, cur, sid, price, amount)
     cur.close()
     con.close()
     return jsonify({"info":info,"status":status})

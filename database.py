@@ -65,9 +65,9 @@ def add_shop(con,cur,name,city,price,amount,uid):
         print(e)
         return 'Fail',0
 
-def update_mask_price_amount(con,cur,name,price,amount):
+def update_mask_price_amount(con,cur,sid,price,amount):
     try:
-        cur.execute("UPDATE shop SET price=?,amount=? WHERE name = ?",(price,amount,name,))
+        cur.execute("UPDATE shop SET price=?,amount=? WHERE sid = ?",(price,amount,sid,))
         con.commit()
         return 'Success',1
     except Exception as e:
