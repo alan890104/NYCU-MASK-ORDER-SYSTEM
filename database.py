@@ -89,7 +89,7 @@ def del_employee(con,cur,sid,account):
     try:
         cur.execute("SELECT uid FROM user where account=?",(account,))
         uid = cur.fetchone()[0]
-        cur.execute("DELETE FROM work where sid=? and uid=?)",(sid,uid,))
+        cur.execute("DELETE FROM work where sid=? and uid=?",(sid,uid,))
         con.commit()
         return 'Success',1
     except Exception as e:

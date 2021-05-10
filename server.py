@@ -162,6 +162,7 @@ def edit_mask(sid):
 
 @app.route('/employee/add' , methods=['POST'])
 def add_employee_to_shop():
+    print("#######ADD EMPLYEE FROM SHOP#########")
     con = sqlite3.connect("DB.sqlite3")
     cur = con.cursor()
     sid = request.form['sid']
@@ -173,6 +174,7 @@ def add_employee_to_shop():
 
 @app.route('/employee/del' , methods=['POST'])
 def del_employee_from_shop():
+    print("#######DELETE EMPLYEE FROM SHOP#########")
     con = sqlite3.connect("DB.sqlite3")
     cur = con.cursor()
     sid = request.form['sid']
