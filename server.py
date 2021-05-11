@@ -53,6 +53,7 @@ def register_shop(uid):
     info,status =  add_shop(con, cur, name, city, price, amount,uid)
     cur.close()
     con.close()
+    print(jsonify({"info":info,"status":status}))
     return jsonify({"info":info,"status":status})
     
 @app.route('/shop/query' , methods=['POST'])
@@ -60,6 +61,7 @@ def query_shop():
     con = sqlite3.connect("DB.sqlite3")
     cur = con.cursor()
     data =  list_shop(con,cur)
+    print(data)
     cur.close()
     con.close()
     return jsonify({"info":"Success",'status':1,"data":data})
@@ -68,8 +70,9 @@ def query_shop():
 def query_specify_shop_by_uid(uid):
     con = sqlite3.connect("DB.sqlite3")
     cur = con.cursor()
-    cur.execute("SELECT * FROM shop WHERE uid = ?",[uid])
+    cur.execute("SELECT * FROM shop WHERE uid = ?",[uid,])
     data = cur.fetchone()
+    print(data)
     return_obj = {"info":'Success',"status":0}
     if not data:
         return_obj["info"] = "Fail"
@@ -118,33 +121,37 @@ def query_shop_by_conditioin(uid):
     con = sqlite3.connect("DB.sqlite3")
     cur = con.cursor()
     condition = {}
-    condition['name'] = '%' if request.form['shop']==None else '%'+request.form['shop']+'%'
-    condition['city'] = '%' if request.form['city']==None else '%'+request.form['city']+'%'
+    condition['name'] = '%' if request.form['shop']=='' else '%'+request.form['shop']+'%'
+    condition['city'] = '%' if request.form['city']=='All' else '%'+request.form['city']+'%'
     condition['price_min'] = request.form['price_min']
     
-    if isinstance(request.form['price_max'], int):
-        condition['price_max'] = "AND price<{}".format(request.form['price_max'])
+    if isinstance(request.form['price_max'], str):
+        if request.form['price_max']!='-1':
+            condition['price_max'] = " AND price<={}".format(request.form['price_max'])
+        else:
+            condition['price_max'] = ''
     else:
         condition['price_max'] = ''
 
-    if request.form['amount_type']==0:
+    if request.form['amount_type']=='0':
         condition['amount_type'] = 'AND amount=0'
-    elif request.form['amount_type']==1:
+    elif request.form['amount_type']=='1':
         condition['amount_type'] = 'AND amount BETWEEN 1 AND 5000'
-    elif request.form['amount_type']==2:
+    elif request.form['amount_type']=='2':
         condition['amount_type'] = 'AND amount>5000'
     else:
         condition['amount_type'] = ''
 
-    if request.form['only_show_work']==1: # 只顯示自己工作的店家
-        cur.execute("SELECT shop.name FROM shop inner join work on shop.sid=work.sid\
-                     where work.uid=? or shop.uid=? AND price>? AND name LIKE ? AND city LIKE ? \
+    if request.form['only_show_work']=='1': # 只顯示自己工作的店家
+        cur.execute("SELECT DISTINCT shop.name,shop.city,shop.price,shop.amount FROM shop left join work on shop.sid=work.sid\
+                     where (work.uid=? or shop.uid=?) AND price>=? AND name LIKE ? AND city LIKE ? \
                     {} {}".format(condition['price_max'],condition['amount_type']) , [uid,uid,condition['price_min'],condition['name'],condition['city']])
     else:
-        cur.execute("SELECT shop.name FROM shop WHERE price>? AND name LIKE ? AND city LIKE ? \
+        cur.execute("SELECT shop.name,shop.city,shop.price,shop.amount FROM shop WHERE price>=? AND name LIKE ? AND city LIKE ? \
                     {} {}".format(condition['price_max'],condition['amount_type']) , [condition['price_min'],condition['name'],condition['city']])
     
     data = cur.fetchall()
+    print(data)
     cur.close()
     con.close()
     return jsonify({"info":"Success","status":1,"data":data})
@@ -167,10 +174,10 @@ def add_employee_to_shop():
     cur = con.cursor()
     sid = request.form['sid']
     account = request.form['account']
-    info,status = add_employee(con,cur,sid, account)
+    info,status,phone = add_employee(con,cur,sid, account)
     cur.close()
     con.close()
-    return jsonify({"info":info,"status":status})
+    return jsonify({"info":info,"status":status,"data":phone})
 
 @app.route('/employee/del' , methods=['POST'])
 def del_employee_from_shop():
@@ -201,6 +208,7 @@ def show_work_places(uid):
     cur = con.cursor()
     cur.execute("SELECT name FROM shop inner join work on shop.sid=work.sid where work.uid=?",(uid,))
     data = cur.fetchall()
+    print(data)
     cur.close()
     con.close()
     return jsonify({"info":"Success","status":1,"data":data})

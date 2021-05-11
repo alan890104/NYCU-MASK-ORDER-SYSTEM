@@ -57,7 +57,7 @@ def add_user(con,cur,account,encrpt_passwd,phone):
 
 def add_shop(con,cur,name,city,price,amount,uid):
     try:
-        input_list = [name,city,price,amount,uid]
+        input_list = [name,city,price,amount,uid,]
         cur.execute("insert into shop values (NULL, ?, ?, ?, ?,?)", input_list)
         con.commit()
         return 'Success',1
@@ -76,14 +76,19 @@ def update_mask_price_amount(con,cur,sid,price,amount):
 
 def add_employee(con,cur,sid,account):
     try:
-        cur.execute("SELECT uid FROM user where account=?",(account,))
-        uid = cur.fetchone()[0]
-        cur.execute("Insert into work values (?,?)",(sid,uid,))
-        con.commit()
-        return 'Success',1
+        cur.execute("SELECT uid,phone FROM user where account=?",(account,))
+        data = cur.fetchone()
+        if not data:
+            return '使用者不存在',0,None
+        else:
+            uid = data[0]
+            phone = data[1]
+            cur.execute("Insert into work values (?,?)",(sid,uid,))
+            con.commit()
+            return 'Success',1,phone
     except Exception as e:
         print(e)
-        return 'Fail',0
+        return '使用者已在此商家工作OUO',0,None
 
 def del_employee(con,cur,sid,account):
     try:
@@ -98,7 +103,8 @@ def del_employee(con,cur,sid,account):
 
 def list_shop(con,cur):
     cur.execute("SELECT * FROM shop")
-    return cur.fetchall()
+    data = cur.fetchall()
+    return data
 
 
 def drop_trigger(con,cur):
