@@ -3,7 +3,7 @@ from flask_cors import CORS
 import sqlite3
 import hashlib
 from database import *
-
+import datetime
 app = Flask(__name__)
 
 
@@ -207,6 +207,139 @@ def show_work_places(uid):
     con = sqlite3.connect("DB.sqlite3")
     cur = con.cursor()
     cur.execute("SELECT name FROM shop inner join work on shop.sid=work.sid where work.uid=?",(uid,))
+    data = cur.fetchall()
+    print(data)
+    cur.close()
+    con.close()
+    return jsonify({"info":"Success","status":1,"data":data})
+
+@app.route('/order/create/<uid>' , methods=['POST'])
+def create_order(uid):
+    con = sqlite3.connect("DB.sqlite3")
+    cur = con.cursor()
+    name = request.form['name']
+    amount = request.form['amount']
+    price = request.form['price']
+    # orders shema = oid,status,start,finish,creator,completer,sid,amount,price
+    cur.execute("SELECT sid FROM shop WHERE name = ?",[name])
+    sid = cur.fetchone()[0]
+    status = '0'
+    start = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    finish = None
+    creator = uid
+    completer = None
+    input_list = [status,start,creator,sid,amount,price]
+    print("Insert: ",input_list)
+    cur.execute("INSERT INTO orders values (NULL, ?, ?, NULL, ?, NULL, ?, ?, ?)", input_list)
+    con.commit()
+    cur.close()
+    con.close()
+    return jsonify({"info":"Success","status":1})
+
+@app.route('/order/list/user/<uid>' , methods=['POST'])
+def list_my_order(uid):
+    con = sqlite3.connect("DB.sqlite3")
+    cur = con.cursor()
+    status = request.form['status']
+    if status=="All": # show all orders by uid
+        input_list = [uid]
+        cur.execute("SELECT a.oid,a.status,a.start,a.finish,b.account,c.account,d.name,a.amount,a.price \
+                    FROM orders as a \
+                    left join user as b on a.creator=b.uid\
+                    left join user as c on a.completer=c.uid\
+                    left join shop as d on a.sid=d.sid \
+                    WHERE a.creator=?", input_list)
+    else:
+        input_list = [status,uid]
+        cur.execute("SELECT a.oid,a.status,a.start,a.finish,b.account,c.account,d.name,a.amount,a.price \
+                    FROM orders as a \
+                    left join user as b on a.creator=b.uid\
+                    left join user as c on a.completer=c.uid\
+                    left join shop as d on a.sid=d.sid \
+                    WHERE a.status=? AND a.creator=?", input_list)
+    data = cur.fetchall()
+    print(data)
+    cur.close()
+    con.close()
+    return jsonify({"info":"Success","status":1,"data":data})
+
+@app.route('/order/cancel/<uid>' , methods=['POST'])
+def cancel_order(uid):
+    con = sqlite3.connect("DB.sqlite3")
+    cur = con.cursor()
+    oid_list = request.form.getlist('data')
+    print('cancel receive oid: ',oid_list)
+    finish_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    input_list = [tuple(['-1',finish_time,uid,oid]) for oid in oid_list]
+    cur.executemany("UPDATE orders SET status=?,finish=?,completer=? WHERE oid=?",input_list)
+    con.commit()
+    cur.close()
+    con.close()
+    return jsonify({"info":"Success","status":1})
+
+@app.route('/order/complete/<uid>' , methods=['POST'])
+def complete_order(uid):
+    con = sqlite3.connect("DB.sqlite3")
+    cur = con.cursor()
+    oid_list = request.form.getlist('data')
+    print('cancel receive oid: ',oid_list)
+    finish_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    input_list = [tuple(['1',finish_time,uid,oid]) for oid in oid_list]
+    # update the order list
+    cur.executemany("UPDATE orders SET status=?,finish=?,completer=? WHERE oid=?",input_list)
+    con.commit()
+    # sum all of the amount group by sid
+    cur.execute("SELECT SUM(amount),sid FROM orders WHERE oid IN ({}) GROUP BY sid".format(",".join("?"*len(oid_list))),oid_list)
+    sum_of_order = cur.fetchall()
+    print("sum of orders",sum_of_order) # [(amount,SID),(),()...]
+    # update the amount in shop
+    cur.executemany("UPDATE shop SET amount=amount-? WHERE sid=?",sum_of_order)
+    con.commit()
+    cur.close()
+    con.close()
+    return jsonify({"info":"Success","status":1})
+
+@app.route('/order/list/shop/<uid>' , methods=['POST']) # 列出工作店家的訂單
+def list_shop_order(uid):
+    con = sqlite3.connect("DB.sqlite3")
+    cur = con.cursor()
+    status = request.form['status']
+    work = request.form['work']
+    if status=="All": # show all orders by uid
+        if work=="All":
+            input_list = [uid]
+            cur.execute("SELECT a.oid,a.status,a.start,a.finish,b.account,c.account,d.name,a.amount,a.price \
+                        FROM orders as a \
+                        left join user as b on a.creator=b.uid\
+                        left join user as c on a.completer=c.uid\
+                        left join shop as d on a.sid=d.sid \
+                        WHERE a.creator=?", input_list)
+        else:
+            input_list = [uid,work]
+            cur.execute("SELECT a.oid,a.status,a.start,a.finish,b.account,c.account,d.name,a.amount,a.price \
+                        FROM orders as a \
+                        left join user as b on a.creator=b.uid\
+                        left join user as c on a.completer=c.uid\
+                        left join shop as d on a.sid=d.sid \
+                        WHERE a.creator=? AND d.name=? ", input_list)
+    else:
+        if work=="All":
+            input_list = [status,uid]
+            cur.execute("SELECT a.oid,a.status,a.start,a.finish,b.account,c.account,d.name,a.amount,a.price \
+                        FROM orders as a \
+                        left join user as b on a.creator=b.uid\
+                        left join user as c on a.completer=c.uid\
+                        left join shop as d on a.sid=d.sid \
+                        WHERE a.status=? AND a.creator=?", input_list)
+        else:
+            input_list = [status,uid,work]
+            cur.execute("SELECT a.oid,a.status,a.start,a.finish,b.account,c.account,d.name,a.amount,a.price \
+                        FROM orders as a \
+                        left join user as b on a.creator=b.uid\
+                        left join user as c on a.completer=c.uid\
+                        left join shop as d on a.sid=d.sid \
+                        WHERE a.status=? AND a.creator=? AND d.name=?", input_list)
+                        
     data = cur.fetchall()
     print(data)
     cur.close()

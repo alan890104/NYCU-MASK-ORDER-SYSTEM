@@ -21,9 +21,23 @@ def create_table(cur):
     # 店員在店家工作                                 
     cur.execute("create  table  work (sid  NOT NULL ,\
                                       uid  NOT NULL ,\
-                                      PRIMARY KEY(sid,uid)\
+                                      PRIMARY KEY(sid,uid),\
                                       FOREIGN KEY(uid) REFERENCES user(uid),\
                                       FOREIGN KEY(sid) REFERENCES shop(sid))")
+    # 訂單列表
+    cur.execute("create  table  orders (oid PRIMARY KEY,\
+                                      status  NOT NULL ,\
+                                      start TEXT NOT NULL,\
+                                      finish TEXT,\
+                                      creator NOT NULL,\
+                                      completer TEXT,\
+                                      sid NOT NULL,\
+                                      amount NOT NULL,\
+                                      price NOT NULL,\
+                                      FOREIGN KEY(creator) REFERENCES user(uid),\
+                                      FOREIGN KEY(completer) REFERENCES user(uid),\
+                                      FOREIGN KEY(sid) REFERENCES shop(sid))")
+                                
 def create_trigger(cur):
     cur.execute("CREATE TRIGGER uid_generate\
                 AFTER INSERT ON user\
@@ -38,6 +52,13 @@ def create_trigger(cur):
                 WHEN (NEW.sid IS NULL)\
                 BEGIN\
                     UPDATE shop SET sid = (select hex( randomblob(8))) WHERE rowid = NEW.rowid;\
+                END;")
+    cur.execute("CREATE TRIGGER oid_generate\
+                AFTER INSERT ON orders\
+                FOR EACH ROW\
+                WHEN (NEW.oid IS NULL)\
+                BEGIN\
+                    UPDATE orders SET oid = (select hex( randomblob(8))) WHERE rowid = NEW.rowid;\
                 END;")
 
 def encrypt(data):
@@ -110,6 +131,7 @@ def list_shop(con,cur):
 def drop_trigger(con,cur):
     cur.execute("DROP TRIGGER IF EXISTS uid_generate")
     cur.execute("DROP TRIGGER IF EXISTS sid_generate")
+    cur.execute("DROP TRIGGER IF EXISTS oid_generate")
     con.commit()
 
     
