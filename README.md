@@ -345,7 +345,7 @@ Reply:
 #route 140.113.67.121:5000/order/cancel/<uid> method='POST'
 cancel order request
 {
-    data:[OID_1,OID_2,...]把要取消的OID存成list回傳
+    data:OID_1+' '+OID_2+' '+...把要取消的OID存成string回傳
 }
 
 Reply:
@@ -363,7 +363,7 @@ Reply:
 #route 140.113.67.121:5000/order/complete/<uid> method='POST'
 complete order request
 {
-    data:[OID_1,OID_2,...]把要完成的OID存成list回傳
+    data:OID_1+' '+OID_2+' '+...把要取消的OID存成string回傳
 }
 
 Reply:
@@ -432,3 +432,5 @@ Reply:
         ]
 } 
 ```
+
+###### tags: `sqlite3` `sql` `python` `database` `mask`
