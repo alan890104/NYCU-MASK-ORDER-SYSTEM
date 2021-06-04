@@ -7,3 +7,6 @@ DB_HW2_Spec.pdf
 DB_HW2.pptx
 *.zip
 *.sqlite3
+sql_remote.py
+*.html
+template

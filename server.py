@@ -206,7 +206,7 @@ def show_shop_employees(sid):
 def show_work_places(uid):
     con = sqlite3.connect("DB.sqlite3")
     cur = con.cursor()
-    cur.execute("SELECT name FROM shop inner join work on shop.sid=work.sid where work.uid=?",(uid,))
+    cur.execute("SELECT DISTINCT shop.name FROM shop left join work on shop.sid=work.sid where (work.uid=? or shop.uid=?)",(uid,uid,))
     data = cur.fetchall()
     print(data)
     cur.close()
@@ -217,6 +217,7 @@ def show_work_places(uid):
 def create_order(uid):
     con = sqlite3.connect("DB.sqlite3")
     cur = con.cursor()
+    print(request.form)
     name = request.form['name']
     amount = request.form['amount']
     price = request.form['price']
@@ -230,7 +231,11 @@ def create_order(uid):
     completer = None
     input_list = [status,start,creator,sid,amount,price]
     print("Insert: ",input_list)
+    # create a new order
     cur.execute("INSERT INTO orders values (NULL, ?, ?, NULL, ?, NULL, ?, ?, ?)", input_list)
+    con.commit()
+    # update value in shop table
+    cur.execute("UPDATE shop set amount=amount-? WHERE sid=?",[amount,sid])
     con.commit()
     cur.close()
     con.close()
@@ -257,7 +262,7 @@ def list_my_order(uid):
                     left join user as c on a.completer=c.uid\
                     left join shop as d on a.sid=d.sid \
                     WHERE a.status=? AND a.creator=?", input_list)
-    data = cur.fetchall()
+    data = [list(x) for x in cur.fetchall()]
     print(data)
     cur.close()
     con.close()
@@ -267,11 +272,20 @@ def list_my_order(uid):
 def cancel_order(uid):
     con = sqlite3.connect("DB.sqlite3")
     cur = con.cursor()
-    oid_list = request.form.getlist('data')
+    oid_list = request.form['data'].split()
     print('cancel receive oid: ',oid_list)
     finish_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     input_list = [tuple(['-1',finish_time,uid,oid]) for oid in oid_list]
+    # update orders status and cancel information 
     cur.executemany("UPDATE orders SET status=?,finish=?,completer=? WHERE oid=?",input_list)
+    con.commit()
+    # add the amount back
+    # sum all of the amount group by sid
+    cur.execute("SELECT SUM(amount),sid FROM orders WHERE oid IN ({}) GROUP BY sid".format(",".join("?"*len(oid_list))),oid_list)
+    sum_of_order = cur.fetchall()
+    print("sum of orders",sum_of_order) # [(amount,SID),(),()...]
+    # update the amount in shop
+    cur.executemany("UPDATE shop SET amount=amount+? WHERE sid=?",sum_of_order)
     con.commit()
     cur.close()
     con.close()
@@ -281,19 +295,12 @@ def cancel_order(uid):
 def complete_order(uid):
     con = sqlite3.connect("DB.sqlite3")
     cur = con.cursor()
-    oid_list = request.form.getlist('data')
+    oid_list = request.form['data'].split()
     print('cancel receive oid: ',oid_list)
     finish_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     input_list = [tuple(['1',finish_time,uid,oid]) for oid in oid_list]
     # update the order list
     cur.executemany("UPDATE orders SET status=?,finish=?,completer=? WHERE oid=?",input_list)
-    con.commit()
-    # sum all of the amount group by sid
-    cur.execute("SELECT SUM(amount),sid FROM orders WHERE oid IN ({}) GROUP BY sid".format(",".join("?"*len(oid_list))),oid_list)
-    sum_of_order = cur.fetchall()
-    print("sum of orders",sum_of_order) # [(amount,SID),(),()...]
-    # update the amount in shop
-    cur.executemany("UPDATE shop SET amount=amount-? WHERE sid=?",sum_of_order)
     con.commit()
     cur.close()
     con.close()
@@ -303,48 +310,68 @@ def complete_order(uid):
 def list_shop_order(uid):
     con = sqlite3.connect("DB.sqlite3")
     cur = con.cursor()
+    print('order list shop: ',request.form)
     status = request.form['status']
     work = request.form['work']
-    if status=="All": # show all orders by uid
+    if status=="All": # show all orders
         if work=="All":
-            input_list = [uid]
+            cur.execute("SELECT DISTINCT shop.name FROM shop left join work on shop.sid=work.sid where (work.uid=? or shop.uid=?)",(uid,uid,))
+            db_return = cur.fetchall()
+            input_list = [place[0] for place in db_return] #找到他在哪工作
+            print('INPUT LIST: ',input_list)
             cur.execute("SELECT a.oid,a.status,a.start,a.finish,b.account,c.account,d.name,a.amount,a.price \
                         FROM orders as a \
                         left join user as b on a.creator=b.uid\
                         left join user as c on a.completer=c.uid\
                         left join shop as d on a.sid=d.sid \
-                        WHERE a.creator=?", input_list)
+                        WHERE d.name in ({})".format(",".join("?"*len(input_list))), input_list)
         else:
-            input_list = [uid,work]
+            input_list = [work]
             cur.execute("SELECT a.oid,a.status,a.start,a.finish,b.account,c.account,d.name,a.amount,a.price \
                         FROM orders as a \
                         left join user as b on a.creator=b.uid\
                         left join user as c on a.completer=c.uid\
                         left join shop as d on a.sid=d.sid \
-                        WHERE a.creator=? AND d.name=? ", input_list)
+                        WHERE d.name=? ", input_list)
     else:
         if work=="All":
-            input_list = [status,uid]
+            cur.execute("SELECT DISTINCT shop.name FROM shop left join work on shop.sid=work.sid where (work.uid=? or shop.uid=?)",(uid,uid,))
+            workplace = [place[0] for place in cur.fetchall()]
+            input_list = [status]
+            input_list.extend(workplace)
             cur.execute("SELECT a.oid,a.status,a.start,a.finish,b.account,c.account,d.name,a.amount,a.price \
                         FROM orders as a \
                         left join user as b on a.creator=b.uid\
                         left join user as c on a.completer=c.uid\
                         left join shop as d on a.sid=d.sid \
-                        WHERE a.status=? AND a.creator=?", input_list)
+                        WHERE a.status=? AND d.name=({})".format(",".join("?"*len(workplace))), input_list)
         else:
-            input_list = [status,uid,work]
+            input_list = [status,work]
             cur.execute("SELECT a.oid,a.status,a.start,a.finish,b.account,c.account,d.name,a.amount,a.price \
                         FROM orders as a \
                         left join user as b on a.creator=b.uid\
                         left join user as c on a.completer=c.uid\
                         left join shop as d on a.sid=d.sid \
-                        WHERE a.status=? AND a.creator=? AND d.name=?", input_list)
+                        WHERE a.status=? AND d.name=?", input_list)
                         
+    data = cur.fetchall()
+    print('return data is : ',data)
+    cur.close()
+    con.close()
+    return jsonify({"info":"Success","status":1,"data":data})
+
+@app.route('/shop/amount' , methods=['POST'])
+def shop_amount():
+    con = sqlite3.connect("DB.sqlite3")
+    cur = con.cursor()
+    cur.execute("SELECT name,amount FROM shop")
     data = cur.fetchall()
     print(data)
     cur.close()
     con.close()
-    return jsonify({"info":"Success","status":1,"data":data})
+    return_dict = {x[0]:x[1] for x in data}
+    return jsonify({"info":"Success","status":1,"data":return_dict})
+
 
 if __name__=='__main__':
     app.debug=True
