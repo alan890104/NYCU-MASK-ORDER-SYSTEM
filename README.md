@@ -1,5 +1,8 @@
 # 2021交大資工黃俊龍資料庫 - 口罩訂購系統
 
+## 推薦開發工具
+github link: [sqlite3-shell](https://github.com/alan890104/sqlite3-shell)
+
 ## 使用者
 ### 使用者登入(後端)
 ```python=
