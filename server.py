@@ -295,16 +295,21 @@ def cancel_order(uid):
 def complete_order(uid):
     con = sqlite3.connect("DB.sqlite3")
     cur = con.cursor()
+    return_obj = {"info":"Success","status":1}
     oid_list = request.form['data'].split()
     print('cancel receive oid: ',oid_list)
     finish_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     input_list = [tuple(['1',finish_time,uid,oid]) for oid in oid_list]
+    # cur.execute("SELECT COUNT(*) FROM orders WHERE oid IN ({}) AND status!=0".format(",".join("?"*len(oid_list))),oid_list) #先看有沒有OID的status不是0
+    # invalid_order = cur.fetchone()
+    # if invalid_order!=0: # 如果有訂單是非法(STATUS!=0) 則回傳錯誤
+    #     return_obj = {"info":"Fail","status":0,"data":"選取的一張或多張訂單"}
     # update the order list
     cur.executemany("UPDATE orders SET status=?,finish=?,completer=? WHERE oid=?",input_list)
     con.commit()
     cur.close()
     con.close()
-    return jsonify({"info":"Success","status":1})
+    return jsonify(return_obj)
 
 @app.route('/order/list/shop/<uid>' , methods=['POST']) # 列出工作店家的訂單
 def list_shop_order(uid):
